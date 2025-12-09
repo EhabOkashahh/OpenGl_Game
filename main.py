@@ -46,7 +46,7 @@ def draw_text(x, y, text):
 
 # Block class
 class Block:
-    def _init_(self, x, y, size, speed):
+    def __init__(self, x, y, size, speed):
         self.x = x
         self.y = y
         self.size = size
@@ -56,6 +56,10 @@ class Block:
         self.y -= self.speed * dt
 
     def draw(self):
+        draw_rect(self.x, self.y, self.size, self.size)
+class BombBlock(Block):
+    def draw(self):
+        glColor3f(0, 1, 0)  # green RGB
         draw_rect(self.x, self.y, self.size, self.size)
 
 # Game reset
@@ -83,9 +87,13 @@ def display():
     draw_rect(player_x - PLAYER_W/2, player_y, PLAYER_W, PLAYER_H)
 
     # Draw blocks
-    glColor3f(0.9, 0.3, 0.3)
     for b in blocks:
+        if isinstance(b, BombBlock):
+            glColor3f(0, 1, 0)  #  bomb lonha a5dr
+        else:
+            glColor3f(0.9, 0.3, 0.3)  # red normal block
         b.draw()
+
 
     # UI
     glColor3f(1, 1, 1)
@@ -122,8 +130,11 @@ def update(value):
             spawn_timer = 0.0
             x = random.randint(0, WIN_W - BLOCK_SIZE)
             speed = random.uniform(120, 220) + score * 3
-            blocks.append(Block(x, WIN_H, BLOCK_SIZE, speed))
-
+            if random.random() < 0.2:
+                blocks.append(BombBlock(x, WIN_H, BLOCK_SIZE, speed))
+            else:
+                blocks.append(Block(x, WIN_H, BLOCK_SIZE, speed))
+            #percentage 20% en el bomb tnzl
         # update blocks
         to_remove = []
         for b in blocks:
@@ -132,14 +143,22 @@ def update(value):
             px = player_x - PLAYER_W/2
             py = player_y
             if rects_overlap(px, py, PLAYER_W, PLAYER_H, b.x, b.y, b.size, b.size):
-                score += 1
+                if isinstance(b, BombBlock):
+                    lives -= 1           # hit bomb → lose life
+                else:
+                    score += 1           # caught normal block > gain score
                 to_remove.append(b)
+
             elif b.y + b.size < 0:
+                # block fell past player
                 to_remove.append(b)
-                lives -= 1
+                if not isinstance(b, BombBlock):
+                    lives -= 1           # missed normal block > lose life
+                # missed bomb → no penalty
                 if lives <= 0:
                     game_over = True
                     game_running = False
+
 
         for r in to_remove:
             if r in blocks:
@@ -225,5 +244,5 @@ def main():
     last_time = now()
     glutMainLoop()
 
-if name == "__main__":
+if __name__ == "__main__":
     main()
