@@ -16,6 +16,9 @@ player_x = WIN_W // 2
 player_y = 40
 player_speed = 800.0  # pixels per second
 
+
+on_home_page = True
+paused = False
 blocks = []
 score = 0
 lives = 5
@@ -46,7 +49,7 @@ def draw_text(x, y, text):
 
 # Block class
 class Block:
-    def _init_(self, x, y, size, speed):
+    def __init__(self, x, y, size, speed):
         self.x = x
         self.y = y
         self.size = size
@@ -60,14 +63,16 @@ class Block:
 
 # Game reset
 def reset_game():
-    global blocks, score, lives, spawn_timer, spawn_interval, game_over, game_running
+    global blocks, score, lives, spawn_timer, spawn_interval, game_over, game_running, paused, on_home_page
     blocks = []
     score = 0
     lives = 5
     spawn_timer = 0.0
     spawn_interval = 1.0
     game_over = False
+    paused = False
     game_running = True
+    on_home_page = False
 
 # Collision: axis-aligned rectangles
 def rects_overlap(x1, y1, w1, h1, x2, y2, w2, h2):
@@ -75,30 +80,47 @@ def rects_overlap(x1, y1, w1, h1, x2, y2, w2, h2):
 
 # Display callback
 def display():
+    global on_home_page, paused, score, lives, blocks, player_x, game_running, game_over    
     glClear(GL_COLOR_BUFFER_BIT)
     glLoadIdentity()
+    
+    if on_home_page:
+        glColor3f(1, 1, 1)
+        draw_text(WIN_W/2 - 120, WIN_H/2 + 10, "WELCOME TO THE GAME")
+        draw_text(WIN_W/2 - 100, WIN_H/2 - 20, "Press SPACE to Start")
 
-    # Draw player
-    glColor3f(0.2, 0.7, 0.9)
-    draw_rect(player_x - PLAYER_W/2, player_y, PLAYER_W, PLAYER_H)
+    else:
+        # Draw player
+        glColor3f(0.2, 0.7, 0.9)
+        draw_rect(player_x - PLAYER_W/2, player_y, PLAYER_W, PLAYER_H)
 
-    # Draw blocks
-    glColor3f(0.9, 0.3, 0.3)
-    for b in blocks:
-        b.draw()
+        # Draw blocks
+        glColor3f(0.9, 0.3, 0.3)
+        for b in blocks:
+            b.draw()
 
-    # UI
-    glColor3f(1, 1, 1)
-    draw_text(10, WIN_H - 30, f"Score: {score}")
-    draw_text(200, WIN_H - 30, f"Lives: {lives}")
+        # UI
+        glColor3f(1, 1, 1)
+        draw_text(10, WIN_H - 30, f"Score: {score}")
+        draw_text(200, WIN_H - 30, f"Lives: {lives}")
 
-    if not game_running and not game_over:
-        draw_text(WIN_W/2 - 120, WIN_H/2 + 10, "Press SPACE to start")
-        draw_text(WIN_W/2 - 160, WIN_H/2 - 20, "Move with LEFT and RIGHT arrows")
-    if game_over:
-        draw_text(WIN_W/2 - 80, WIN_H/2 + 30, "GAME OVER")
-        draw_text(WIN_W/2 - 120, WIN_H/2 + 0, f"Final Score: {score}")
-        draw_text(WIN_W/2 - 160, WIN_H/2 - 30, "Press SPACE to restart")
+        # PAUSE
+        if paused:
+            glColor3f(1, 1, 0)
+            draw_text(WIN_W/2 - 60, WIN_H/2, "PAUSED")
+            draw_text(WIN_W/2 - 120, WIN_H/2 - 30, "Press P to Resume")
+
+        # GAME OVER
+        if game_over:
+            glColor3f(1, 0, 0)
+            draw_text(WIN_W/2 - 80, WIN_H/2 + 30, "GAME OVER")
+            draw_text(WIN_W/2 - 120, WIN_H/2 + 0, f"Final Score: {score}")
+            draw_text(WIN_W/2 - 160, WIN_H/2 - 30, "Press SPACE to Restart")
+
+        if paused:
+            glColor3f(1, 1, 0)
+            draw_text(WIN_W/2 - 60, WIN_H/2, "PAUSED")
+            draw_text(WIN_W/2 - 120, WIN_H/2 - 30, "Press P to Resume")
 
     glutSwapBuffers()
 
@@ -107,16 +129,12 @@ def update(value):
     global last_time, spawn_timer, spawn_interval, score, lives, game_over, game_running
 
     t = now()
-    if last_time == 0:
-        dt = 1/60.0
-    else:
-        dt = t - last_time
+    dt = t - last_time if last_time != 0 else 1/60.0
     last_time = t
 
-    if game_running and not game_over:
-        # spawn
+    if game_running and not game_over and not paused:
+        # Spawn blocks
         spawn_timer += dt
-        # increase difficulty slightly with score
         difficulty = 1.0 + score * 0.02
         if spawn_timer >= spawn_interval / difficulty:
             spawn_timer = 0.0
@@ -124,11 +142,10 @@ def update(value):
             speed = random.uniform(120, 220) + score * 3
             blocks.append(Block(x, WIN_H, BLOCK_SIZE, speed))
 
-        # update blocks
+        # Update blocks
         to_remove = []
         for b in blocks:
             b.update(dt)
-            # collision
             px = player_x - PLAYER_W/2
             py = player_y
             if rects_overlap(px, py, PLAYER_W, PLAYER_H, b.x, b.y, b.size, b.size):
@@ -150,14 +167,20 @@ def update(value):
 
 # Keyboard handlers
 def keyboard_down(key, x, y):
-    global game_running, game_over
+    global game_running, game_over, on_home_page, paused
     if key == b'\x1b':  # ESC
         sys.exit(0)
-    if key == b' ':
-        if game_over:
+
+    if key == b' ':  # SPACE
+        if on_home_page:
+            on_home_page = False
             reset_game()
-        else:
-            game_running = True
+        elif game_over:
+            reset_game()
+
+    if key == b'p':
+        if game_running and not game_over:
+            paused = not paused
 
 # Special keys for movement
 keys_held = {'left': False, 'right': False}
@@ -177,15 +200,14 @@ def special_up(key, x, y):
 # Idle or movement update via timer: move player
 def movement_timer(value):
     global player_x
-    t = now()
-    # we will move based on fixed dt to keep predictable speed
-    dt = 0.016
-    if keys_held['left']:
-        player_x -= int(player_speed * dt)
-    if keys_held['right']:
-        player_x += int(player_speed * dt)
 
-    # clamp
+    dt = 0.016
+    if not paused and game_running:
+        if keys_held['left']:
+            player_x -= int(player_speed * dt)
+        if keys_held['right']:
+            player_x += int(player_speed * dt)
+
     half = PLAYER_W // 2
     if player_x - half < 0:
         player_x = half
@@ -225,5 +247,5 @@ def main():
     last_time = now()
     glutMainLoop()
 
-if name == "__main__":
+if __name__ == "__main__":
     main()
