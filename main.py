@@ -1,4 +1,3 @@
-
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -27,6 +26,10 @@ spawn_interval = 1.0  # seconds
 game_running = False
 game_over = False
 last_time = 0.0
+
+# Home page and pause
+on_home_page = True
+paused = False
 
 # Timing
 def now():
@@ -84,7 +87,11 @@ def rects_overlap(x1, y1, w1, h1, x2, y2, w2, h2):
 
 # Display callback
 def display():
+<<<<<<< HEAD
     global on_home_page, paused, score, lives, blocks, player_x, game_running, game_over    
+=======
+    global on_home_page, paused, score, lives, blocks, player_x, game_running, game_over
+>>>>>>> Ehab
     glClear(GL_COLOR_BUFFER_BIT)
     glLoadIdentity()
     
@@ -93,10 +100,24 @@ def display():
         draw_text(WIN_W/2 - 120, WIN_H/2 + 10, "WELCOME TO THE GAME")
         draw_text(WIN_W/2 - 100, WIN_H/2 - 20, "Press SPACE to Start")
 
+<<<<<<< HEAD
     else:
         # Draw player
         glColor3f(0.2, 0.7, 0.9)
         draw_rect(player_x - PLAYER_W/2, player_y, PLAYER_W, PLAYER_H)
+=======
+    # HOME PAGE
+    if on_home_page:
+        glColor3f(1, 1, 1)
+        draw_text(WIN_W/2 - 120, WIN_H/2 + 10, "WELCOME TO THE GAME")
+        draw_text(WIN_W/2 - 100, WIN_H/2 - 20, "Press SPACE to Start")
+        glutSwapBuffers()
+        return  # Skip the rest
+
+    # Draw player
+    glColor3f(0.2, 0.7, 0.9)
+    draw_rect(player_x - PLAYER_W/2, player_y, PLAYER_W, PLAYER_H)
+>>>>>>> Ehab
 
 <<<<<<< HEAD
         # Draw blocks
@@ -124,6 +145,7 @@ def display():
     draw_text(200, WIN_H - 30, f"Lives: {lives}")
 >>>>>>> f6d3950d161e73ff46235f0ae520c4fc443429a8
 
+<<<<<<< HEAD
         # PAUSE
         if paused:
             glColor3f(1, 1, 0)
@@ -141,6 +163,20 @@ def display():
             glColor3f(1, 1, 0)
             draw_text(WIN_W/2 - 60, WIN_H/2, "PAUSED")
             draw_text(WIN_W/2 - 120, WIN_H/2 - 30, "Press P to Resume")
+=======
+    # GAME OVER
+    if game_over:
+        glColor3f(1, 0, 0)
+        draw_text(WIN_W/2 - 80, WIN_H/2 + 30, "GAME OVER")
+        draw_text(WIN_W/2 - 120, WIN_H/2 + 0, f"Final Score: {score}")
+        draw_text(WIN_W/2 - 160, WIN_H/2 - 30, "Press SPACE to Restart")
+
+    # PAUSE
+    if paused:
+        glColor3f(1, 1, 0)
+        draw_text(WIN_W/2 - 60, WIN_H/2, "PAUSED")
+        draw_text(WIN_W/2 - 120, WIN_H/2 - 30, "Press P to Resume")
+>>>>>>> Ehab
 
     glutSwapBuffers()
 
@@ -152,8 +188,13 @@ def update(value):
     dt = t - last_time if last_time != 0 else 1/60.0
     last_time = t
 
+<<<<<<< HEAD
     if game_running and not game_over and not paused:
         # Spawn blocks
+=======
+    if game_running and not game_over and not paused and not on_home_page:
+        # spawn
+>>>>>>> Ehab
         spawn_timer += dt
         difficulty = 1.0 + score * 0.02
         if spawn_timer >= spawn_interval / difficulty:
@@ -211,9 +252,18 @@ def keyboard_down(key, x, y):
     if key == b' ':  # SPACE
         if on_home_page:
             on_home_page = False
+<<<<<<< HEAD
+=======
+            reset_game()
+        elif game_over:
+>>>>>>> Ehab
             reset_game()
         elif game_over:
             reset_game()
+
+    if key == b'p':
+        if game_running and not game_over:
+            paused = not paused
 
     if key == b'p':
         if game_running and not game_over:
@@ -237,6 +287,15 @@ def special_up(key, x, y):
 # Idle or movement update via timer: move player
 def movement_timer(value):
     global player_x
+<<<<<<< HEAD
+=======
+    dt = 0.016
+    if not paused and not on_home_page:
+        if keys_held['left']:
+            player_x -= int(player_speed * dt)
+        if keys_held['right']:
+            player_x += int(player_speed * dt)
+>>>>>>> Ehab
 
     dt = 0.016
     if not paused and game_running:
@@ -260,7 +319,6 @@ def reshape(w, h):
     glViewport(0, 0, w, h)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    # Set ortho so coordinates match pixels: left, right, bottom, top
     glOrtho(0, w, 0, h, -1, 1)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
@@ -286,7 +344,11 @@ def main():
 
 if __name__ == "__main__":
 <<<<<<< HEAD
+<<<<<<< HEAD
     main()
 =======
     main()
 >>>>>>> f6d3950d161e73ff46235f0ae520c4fc443429a8
+=======
+    main()
+>>>>>>> Ehab
