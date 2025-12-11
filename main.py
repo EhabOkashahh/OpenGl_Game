@@ -25,16 +25,18 @@ spawn_interval = 1.0
 game_running = False
 game_over = False
 last_time = 0.0
+high_score = 0
+
+# NEW: Count green blocks caught
+green_catch_count = 0
 
 # Stars background
 STAR_COUNT = 150
 stars = []
 
-# Time helper
 def now():
     return time.time()
 
-# Draw rectangle
 def draw_rect(x, y, w, h):
     glBegin(GL_QUADS)
     glVertex2f(x, y)
@@ -43,13 +45,11 @@ def draw_rect(x, y, w, h):
     glVertex2f(x, y + h)
     glEnd()
 
-# Draw text
 def draw_text(x, y, text):
     glRasterPos2f(x, y)
     for ch in text:
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(ch))
 
-# Block classes
 class Block:
     def __init__(self, x, y, size, speed):
         self.x = x
@@ -68,9 +68,9 @@ class BombBlock(Block):
         glColor3f(1, 0, 0)
         draw_rect(self.x, self.y, self.size, self.size)
 
-# Reset game
 def reset_game():
-    global blocks, score, lives, spawn_timer, game_over, game_running, paused, on_home_page, stars, player_x
+    global blocks, score, lives, spawn_timer, game_over, game_running
+    global paused, on_home_page, stars, player_x, green_catch_count
 
     player_x = WIN_W // 2
     blocks = []
@@ -81,8 +81,8 @@ def reset_game():
     paused = False
     game_running = True
     on_home_page = False
+    green_catch_count = 0
 
-    # Generate stars
     stars.clear()
     for _ in range(STAR_COUNT):
         stars.append({
@@ -92,72 +92,75 @@ def reset_game():
             'size': random.uniform(1, 2)
         })
 
-# Collision check
 def rects_overlap(x1, y1, w1, h1, x2, y2, w2, h2):
     return not (x1+w1 < x2 or x2+w2 < x1 or y1+h1 < y2 or y2+h2 < y1)
 
-# Display
 def display():
+    global high_score
     glClear(GL_COLOR_BUFFER_BIT)
     glLoadIdentity()
 
-    # Draw stars
     glColor3f(1, 1, 1)
     glBegin(GL_POINTS)
     for s in stars:
         glVertex2f(s['x'], s['y'])
     glEnd()
 
-    # Home page
     if on_home_page:
         glColor3f(1, 1, 1)
         draw_text(WIN_W/2 - 120, WIN_H/2 + 10, "WELCOME TO THE GAME")
         draw_text(WIN_W/2 - 110, WIN_H/2 - 20, "Press SPACE to Start")
+        draw_text(WIN_W/2 - 120, WIN_H/2 - 70, f"HIGH SCORE: {high_score}")
         glutSwapBuffers()
         return
 
-    # Player
     glColor3f(0.2, 0.7, 0.9)
     draw_rect(player_x - PLAYER_W/2, player_y, PLAYER_W, PLAYER_H)
 
-    # Blocks
     for b in blocks:
         if isinstance(b, BombBlock):
             glColor3f(1, 0 , 0)
         else:
-            glColor3f( 0, 1 , 0 )
+            glColor3f(0, 1 , 0)
         b.draw()
 
-    # UI
     glColor3f(1, 1, 1)
     draw_text(10, WIN_H - 30, f"Score: {score}")
     draw_text(200, WIN_H - 30, f"Lives: {lives}")
+    draw_text(WIN_W - 200, WIN_H - 30, f"High Score: {high_score}")
 
-    # Pause
     if paused:
         glColor3f(1, 1, 0)
         draw_text(WIN_W/2 - 60, WIN_H/2, "PAUSED")
         glutSwapBuffers()
         return
 
-    # Game Over
     if game_over:
+        is_new_high = (score == high_score and score > 0)
+
         glColor3f(1, 0, 0)
         draw_text(WIN_W/2 - 80, WIN_H/2 + 30, "GAME OVER")
         draw_text(WIN_W/2 - 120, WIN_H/2 + 0, f"Final Score: {score}")
-        draw_text(WIN_W/2 - 160, WIN_H/2 - 30, "Press SPACE to Restart")
+
+        if is_new_high:
+            glColor3f(1, 1, 0)
+            draw_text(WIN_W/2 - 160, WIN_H/2 - 30, f"NEW SESSION HIGH: {high_score}!")
+        else:
+            glColor3f(1, 1, 1)
+            draw_text(WIN_W/2 - 160, WIN_H/2 - 30, f"Session High: {high_score}")
+
+        draw_text(WIN_W/2 - 160, WIN_H/2 - 60, "Press SPACE to Restart")
 
     glutSwapBuffers()
 
-# Update game logic
 def update(value):
     global last_time, spawn_timer, score, lives, game_over, game_running
+    global high_score, green_catch_count
 
     t = now()
     dt = t - last_time if last_time else 1/60
     last_time = t
 
-    # Star movement
     for s in stars:
         s['y'] -= s['speed'] * dt
         if s['y'] < 0:
@@ -178,17 +181,31 @@ def update(value):
             else:
                 blocks.append(Block(x, WIN_H, BLOCK_SIZE, speed))
 
-        # Update blocks
         to_remove = []
         for b in blocks:
             b.update(dt)
             px = player_x - PLAYER_W/2
+
             if rects_overlap(px, player_y, PLAYER_W, PLAYER_H, b.x, b.y, b.size, b.size):
+
                 if isinstance(b, BombBlock):
                     lives -= 1
+                    if lives <= 0:
+                        game_over = True
+                        game_running = False
+                        if score > high_score:
+                            high_score = score
                 else:
                     score += 1
+                    green_catch_count += 1
+
+                    # EXTRA LIFE LOGIC
+                    if green_catch_count >= 10:
+                        lives += 1
+                        green_catch_count = 0
+
                 to_remove.append(b)
+
             elif b.y + b.size < 0:
                 to_remove.append(b)
                 if not isinstance(b, BombBlock):
@@ -196,6 +213,8 @@ def update(value):
                 if lives <= 0:
                     game_over = True
                     game_running = False
+                    if score > high_score:
+                        high_score = score
 
         for r in to_remove:
             if r in blocks:
@@ -204,7 +223,6 @@ def update(value):
     glutPostRedisplay()
     glutTimerFunc(16, update, 0)
 
-# Keyboard
 def keyboard_down(key, x, y):
     global game_running, game_over, on_home_page, paused
 
@@ -212,15 +230,12 @@ def keyboard_down(key, x, y):
         sys.exit()
 
     if key == b' ':
-        if on_home_page:
-            reset_game()
-        elif game_over:
+        if on_home_page or game_over:
             reset_game()
 
     if key == b'p' and game_running and not game_over:
         paused = not paused
 
-# Movement keys
 keys_held = {'left': False, 'right': False}
 
 def special_down(key, x, y):
@@ -245,13 +260,11 @@ def movement_timer(value):
         if keys_held['right']:
             player_x += int(player_speed * dt)
 
-    # Clamp movement
     half = PLAYER_W // 2
     player_x = max(half, min(WIN_W - half, player_x))
 
     glutTimerFunc(16, movement_timer, 0)
 
-# Window reshape
 def reshape(w, h):
     global WIN_W, WIN_H
     WIN_W, WIN_H = w, h
@@ -262,7 +275,6 @@ def reshape(w, h):
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
 
-# Main
 def main():
     global last_time
     glutInit()
