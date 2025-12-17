@@ -6,34 +6,25 @@ import random
 import time
 import pygame
 
-# --- Pygame Mixer Initialization and Sound Loading ---
 SOUND_ENABLED = False
 
-# Sound effect file names (using relative paths)
 HIT_SOUND_FILE = "hit.wav"
-GAMEOVER_SOUND_FILE = "game_overr.wav" 
+GAMEOVER_SOUND_FILE = "game_overr.wav"
 EXTRALIFE_SOUND_FILE = "extra_life.wav"
 
 try:
     pygame.mixer.init()
-    
-    # Load sound effects
     HIT_SOUND = pygame.mixer.Sound(HIT_SOUND_FILE)
-    GAMEOVER_SOUND = pygame.mixer.Sound(GAMEOVER_SOUND_FILE) # New Load
-    EXTRALIFE_SOUND = pygame.mixer.Sound(EXTRALIFE_SOUND_FILE) # New Load
-    
+    GAMEOVER_SOUND = pygame.mixer.Sound(GAMEOVER_SOUND_FILE)
+    EXTRALIFE_SOUND = pygame.mixer.Sound(EXTRALIFE_SOUND_FILE)
     SOUND_ENABLED = True
-    print("Sound system initialized successfully.")
-except pygame.error as e:
-    print(f"Pygame Mixer failed to initialize: {e}. Sound will be disabled.")
-# ----------------------------------------------------
+except pygame.error:
+    pass
 
-# Window settings
 WIN_W, WIN_H = 800, 600
 PLAYER_W, PLAYER_H = 100, 20
 BLOCK_SIZE = 30
 
-# Game state
 player_x = WIN_W // 2
 player_y = 40
 player_speed = 800.0
@@ -49,11 +40,8 @@ game_running = False
 game_over = False
 last_time = 0.0
 high_score = 0
-
-# Count green blocks caught
 green_catch_count = 0
 
-# Stars background
 STAR_COUNT = 150
 stars = []
 
@@ -84,12 +72,10 @@ class Block:
         self.y -= self.speed * dt
 
     def draw(self):
-        # Base block (Green)
         draw_rect(self.x, self.y, self.size, self.size)
 
 class BombBlock(Block):
     def draw(self):
-        # Bomb block (Red)
         glColor3f(1, 0, 0)
         draw_rect(self.x, self.y, self.size, self.size)
 
@@ -116,17 +102,15 @@ def reset_game():
             'speed': random.uniform(5, 50),
             'size': random.uniform(1, 2)
         })
-    
+
 def rects_overlap(x1, y1, w1, h1, x2, y2, w2, h2):
-    """Simple AABB collision check"""
-    return not (x1+w1 < x2 or x2+w2 < x1 or y1+h1 < y2 or y2+h2 < y1)
+    return not (x1 + w1 < x2 or x2 + w2 < x1 or y1 + h1 < y2 or y2 + h2 < y1)
 
 def display():
     global high_score
     glClear(GL_COLOR_BUFFER_BIT)
     glLoadIdentity()
 
-    # Draw Stars
     glColor3f(1, 1, 1)
     glBegin(GL_POINTS)
     for s in stars:
@@ -141,28 +125,23 @@ def display():
         glutSwapBuffers()
         return
 
-    # Draw Player
     glColor3f(0.2, 0.7, 0.9)
     draw_rect(player_x - PLAYER_W/2, player_y, PLAYER_W, PLAYER_H)
 
-    # Draw Blocks
     for b in blocks:
         if isinstance(b, BombBlock):
-            glColor3f(1, 0 , 0) # Red for bomb
+            glColor3f(1, 0, 0)
         else:
-            glColor3f(0, 1 , 0) # Green for regular block
+            glColor3f(0, 1, 0)
         b.draw()
 
-    # Draw HUD (Score, Lives, High Score)
     glColor3f(1, 1, 1)
     draw_text(10, WIN_H - 30, f"Score: {score}")
     draw_text(200, WIN_H - 30, f"Lives: {lives}")
     draw_text(WIN_W - 200, WIN_H - 30, f"High Score: {high_score}")
-    
-    # Draw Green Block Catch Counter for Extra Life
+
     glColor3f(0, 1, 0)
     draw_text(400, WIN_H - 30, f"Catch for +1 Life: {green_catch_count}/10")
-
 
     if paused:
         glColor3f(1, 1, 0)
@@ -172,34 +151,28 @@ def display():
 
     if game_over:
         is_new_high = (score == high_score and score > 0)
-
         glColor3f(1, 0, 0)
         draw_text(WIN_W/2 - 80, WIN_H/2 + 30, "GAME OVER")
-        draw_text(WIN_W/2 - 120, WIN_H/2 + 0, f"Final Score: {score}")
-
+        draw_text(WIN_W/2 - 120, WIN_H/2, f"Final Score: {score}")
         if is_new_high:
             glColor3f(1, 1, 0)
             draw_text(WIN_W/2 - 160, WIN_H/2 - 30, f"NEW SESSION HIGH: {high_score}!")
         else:
             glColor3f(1, 1, 1)
             draw_text(WIN_W/2 - 160, WIN_H/2 - 30, f"Session High: {high_score}")
-
         draw_text(WIN_W/2 - 160, WIN_H/2 - 60, "Press SPACE to Restart")
 
     glutSwapBuffers()
 
 def update(value):
     global last_time, spawn_timer, score, lives, game_over, game_running
-    global high_score, green_catch_count, SOUND_ENABLED
+    global high_score, green_catch_count
 
     t = now()
     dt = t - last_time if last_time else 1/60
     last_time = t
+    old_lives = lives
 
-    # Store current lives for checking if an extra life was gained
-    old_lives = lives 
-
-    # Update Stars
     for s in stars:
         s['y'] -= s['speed'] * dt
         if s['y'] < 0:
@@ -210,13 +183,10 @@ def update(value):
         spawn_timer += dt
         difficulty = 1 + score * 0.02
 
-        # Block spawning logic
         if spawn_timer >= spawn_interval / difficulty:
             spawn_timer = 0
             x = random.randint(0, WIN_W - BLOCK_SIZE)
             speed = random.uniform(120, 220) + score * 3
-
-            # 15% chance to spawn a BombBlock (Red)
             if random.random() < 0.15:
                 blocks.append(BombBlock(x, WIN_H, BLOCK_SIZE, speed))
             else:
@@ -227,76 +197,52 @@ def update(value):
             b.update(dt)
             px = player_x - PLAYER_W/2
 
-            # 1. Collision Check (Block caught by Player)
             if rects_overlap(px, player_y, PLAYER_W, PLAYER_H, b.x, b.y, b.size, b.size):
-
                 if isinstance(b, BombBlock):
                     lives -= 1
-                    if SOUND_ENABLED: 
+                    if SOUND_ENABLED:
                         HIT_SOUND.play()
-                    if lives <= 0:
-                        game_over = True
-                        game_running = False
-                        if score > high_score:
-                            high_score = score
                 else:
                     score += 1
                     green_catch_count += 1
-                    
-                    # EXTRA LIFE LOGIC: Gain a life every 10 green blocks caught
                     if green_catch_count >= 10:
                         lives += 1
                         green_catch_count = 0
-                        # Check if a life was gained
                         if lives > old_lives and SOUND_ENABLED:
-                            EXTRALIFE_SOUND.play() # NEW: Extra Life Sound
-
+                            EXTRALIFE_SOUND.play()
                 to_remove.append(b)
-
-            # 2. Miss Check (Block goes off screen)
             elif b.y + b.size < 0:
                 to_remove.append(b)
-                
-                # Only punish for missing a regular (green) block
                 if not isinstance(b, BombBlock):
                     lives -= 1
-                    if SOUND_ENABLED: 
+                    if SOUND_ENABLED:
                         HIT_SOUND.play()
-                        
-                # Check for Game Over after penalty
-                if lives <= 0:
-                    game_over = True
-                    game_running = False
-                    if score > high_score:
-                        high_score = score
+
+            if lives <= 0:
+                game_over = True
+                game_running = False
+                if score > high_score:
+                    high_score = score
 
         for r in to_remove:
             if r in blocks:
                 blocks.remove(r)
-    
-    # Check for Game Over sound once (triggered by any life-loss that hits zero)
-    if game_over and SOUND_ENABLED:
-        # Check if the sound hasn't been played yet for this game over event
-        if not pygame.mixer.get_busy(): 
-            GAMEOVER_SOUND.play() # NEW: Game Over Sound
 
+    if game_over and SOUND_ENABLED and not pygame.mixer.get_busy():
+        GAMEOVER_SOUND.play()
 
     glutPostRedisplay()
-    glutTimerFunc(16, update, 0) # ~60 FPS update for game logic
+    glutTimerFunc(16, update, 0)
 
 def keyboard_down(key, x, y):
     global game_running, game_over, on_home_page, paused
-
-    if key == b'\x1b': # Escape key to exit
+    if key == b'\x1b':
         sys.exit()
-
-    if key == b' ': # Space bar for start/restart
+    if key == b' ':
         if on_home_page or game_over:
             reset_game()
-
-    if key == b'p' and game_running and not game_over: # P for pause
+    if key == b'p' and game_running and not game_over:
         paused = not paused
-
 
 keys_held = {'left': False, 'right': False}
 
@@ -314,18 +260,14 @@ def special_up(key, x, y):
 
 def movement_timer(value):
     global player_x
-    dt = 0.016 # 16ms interval
-
+    dt = 0.016
     if game_running and not paused:
         if keys_held['left']:
             player_x -= int(player_speed * dt)
         if keys_held['right']:
             player_x += int(player_speed * dt)
-
-    # Keep player within bounds
     half = PLAYER_W // 2
     player_x = max(half, min(WIN_W - half, player_x))
-
     glutTimerFunc(16, movement_timer, 0)
 
 def reshape(w, h):
@@ -344,20 +286,14 @@ def main():
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB)
     glutInitWindowSize(WIN_W, WIN_H)
     glutCreateWindow(b"Catch the Falling Blocks")
-
-    glClearColor(0.05, 0.05, 0.2, 1) # Dark Blue/Purple background
-
-    # Setup Callback functions
+    glClearColor(0.05, 0.05, 0.2, 1)
     glutDisplayFunc(display)
     glutReshapeFunc(reshape)
     glutKeyboardFunc(keyboard_down)
     glutSpecialFunc(special_down)
     glutSpecialUpFunc(special_up)
-    
-    # Setup Timers
     glutTimerFunc(16, update, 0)
     glutTimerFunc(16, movement_timer, 0)
-
     last_time = now()
     glutMainLoop()
 
